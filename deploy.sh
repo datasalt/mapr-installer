@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z "$1" -o -z "$2" -o -z "$3" ]; then
-    echo "args: [cluster_name] [master|slaves] [install|stop|start|restart]"
+    echo "args: [cluster_name] [master|slaves] [install|config-hadoop|stop|start|restart]"
     exit 1
 fi
 

@@ -41,6 +41,7 @@ function set_in_mapred_site {
 }
 
 function config_hadoop {
+ #sudo rm -rf /opt/mapr/hadoop/hadoop-0.20.2/lib/snappy #debug, remove
 
  mapred_site_file="/opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml"
  mapred_backup="${mapred_site_file}.backup"
@@ -50,10 +51,18 @@ function config_hadoop {
    sudo cp $mapred_backup $mapred_site_file
  fi  
 #mapred_site_file="/opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml"
+ set_in_mapred_site "mapred.output.compression.type" "BLOCK"
+ set_in_mapred_site "mapred.map.output.compression.type" "BLOCK"
+ set_in_mapred_site "mapred.submit.replication" "3"
  set_in_mapred_site "mapred.child.java.opts" "-Xmx1024m"
  set_in_mapred_site "mapreduce.job.counters.limit" "500"
  set_in_mapred_site "mapred.tasktracker.map.tasks.maximum" "2"
  set_in_mapred_site "mapred.tasktracker.reduce.tasks.maximum" "2"
+ set_in_mapred_site "mapred.output.compress" "true" 
+ set_in_mapred_site "mapred.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec"
+ set_in_mapred_site "mapred.compress.map.output" "true"
+ set_in_mapred_site "mapred.map.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec"
+ set_in_mapred_site "mapred.compress.map.output" "true"
  set_in_mapred_site "io.compression.codecs" "org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.BZip2Codec,org.apache.hadoop.io.compress.SnappyCodec"
 
 }
@@ -169,6 +178,8 @@ echo "operation $operation"
 
 if [ $operation = "install" ]; then
   install_all $user $master_host $master_or_slave
+elif [ $operation = "config-hadoop" ]; then
+  config_hadoop
 elif [ $operation = "stop" -o $operation = "start" -o $operation = "stop" -o $operation = "restart" ]; then
   services $master_or_slave $operation
 else
