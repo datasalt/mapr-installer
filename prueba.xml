@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+<!-- Replace localhost by one or more ip addresses for jobtracker. -->
+<property>  
+  <name>mapred.job.tracker</name>  
+  <value>maprfs:///</value>
+</property>
+
+<property>
+  <name>mapred.local.dir</name>
+  <value>/tmp/mapr-hadoop/mapred/local</value>
+</property>
+
+</configuration>

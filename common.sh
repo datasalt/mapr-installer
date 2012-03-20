@@ -11,12 +11,18 @@ function install_snappy {
   sudo make install
   cd ..
   rm -rf hadoop-snappy-read-only
-  #HACKY!!
-  svn co http://hadoop-snappy.googlecode.com/svn/branches/mavenized hadoop-snappy-read-only
-  #svn co http://hadoop-snappy.googlecode.com/svn/trunk/ hadoop-snappy-read-only
+
+  sudo ln -s $JAVA_HOME/jre/lib/amd64/server/libjvm.so /usr/local/lib/libjvm.so
+
+  #svn co http://hadoop-snappy.googlecode.com/svn/branches/mavenized hadoop-snappy-read-only
+  svn co http://hadoop-snappy.googlecode.com/svn/trunk/ hadoop-snappy-read-only
   cd hadoop-snappy-read-only
   mvn package -DskipTests
-  sudo cp target/hadoop-snappy-0.0.1-SNAPSHOT.jar /opt/mapr/hadoop/hadoop-0.20.2/lib/
+  mkdir tar_extracted
+  mv target/hadoop-snappy-0.0.1-SNAPSHOT.tar.gz tar_extracted
+  cd tar_extracted
+  tar xvzf hadoop-snappy-0.0.1-SNAPSHOT.tar.gz 
+  sudo cp -R hadoop-snappy-0.0.1-SNAPSHOT/lib/* /opt/mapr/hadoop/hadoop-0.20.2/lib/
 
 }
 
@@ -25,9 +31,9 @@ function set_in_mapred_site {
  value=$2
  echo "Setting $key = $value in mapred-site.xml"
  #cat $mapred_site_file | tr -d "\n" | sed "s/> *</></g" > $mapred_site_file
- #tmp_mapred_site="$mapred_site_file.tmp"
- sudo ruby $HOME/set_in_mapred.rb $mapred_site_file $mapred_site_file $key $value
- #sudo cp $tmp_mapred_site $mapred_site_file
+ tmp_mapred_site="$mapred_site_file.tmp"
+ sudo ruby $HOME/set_in_mapred.rb $mapred_site_file $tmp_mapred_site $key $value
+ sudo cp $tmp_mapred_site $mapred_site_file
  #sudo perl -p -i -e "s/<property><name>$key</name><\/property>/blublu/" /opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml.backup
  #sudo sed  -i "s/<property><name>$key<\/name><value>(.*)<\/value><\/property>//g" $mapred_site_file
  #sudo sed  -i "s/<\/configuration>//g" $mapred_site_file
@@ -84,6 +90,7 @@ function master_install {
 function slave_install {
     master_host=$1
     sudo apt-get -y --force-yes -f install mapr-tasktracker mapr-fileserver
+    sudo /etc/init.d/mapr-warden stop
     install_snappy
     sudo /opt/mapr/server/configure.sh -C $master_host:7222 -Z $master_host:5181 -N MyCluster
     config_hadoop
@@ -135,7 +142,7 @@ function services {
     if [ $master_or_slave = "master" ]; then
       sudo /etc/init.d/mapr-zookeeper $operation
       sudo /etc/init.d/mapr-warden $operation
-      sudo /etc/init.d/mapr-cldb $operation
+      #sudo /etc/init.d/mapr-cldb $operation
     elif [ $master_or_slave = "slave" ]; then
       sudo /etc/init.d/mapr-warden $operation
     else 
