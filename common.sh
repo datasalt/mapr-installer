@@ -12,6 +12,8 @@ function install_snappy {
   cd snappy-1.0.5
   #./autogen.sh
   ./configure && make && sudo make install
+  sudo ln -s /usr/local/lib/libsnappy.{a,so} /usr/lib
+
   cd ..
   rm -rf hadoop-snappy-read-only
 
