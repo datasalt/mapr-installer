@@ -1,14 +1,17 @@
 #!/bin/bash
 
 function install_snappy {
-  sudo apt-get --force-yes -y install 
+  sudo apt-get --force-yes -y install
+  export JAVA_HOME=/usr/lib/jvm/java-6-sun 
   snappy_url="http://snappy.googlecode.com/files/snappy-1.0.5.tar.gz"
+  #rm -rf snappy-read-only 
+  #svn checkout http://snappy.googlecode.com/svn/trunk/ snappy-read-only
   rm -rf snappy-1.0.5
   curl $snappy_url | tar xvz 
+  
   cd snappy-1.0.5
-  ./configure
-  make
-  sudo make install
+  #./autogen.sh
+  ./configure && make && sudo make install
   cd ..
   rm -rf hadoop-snappy-read-only
 
@@ -17,23 +20,30 @@ function install_snappy {
   #svn co http://hadoop-snappy.googlecode.com/svn/branches/mavenized hadoop-snappy-read-only
   svn co http://hadoop-snappy.googlecode.com/svn/trunk/ hadoop-snappy-read-only
   cd hadoop-snappy-read-only
-  mvn package -DskipTests
+  #wget 'http://hadoop-snappy.googlecode.com/issues/attachment?aid=60001000&name=hadoop-snappy-dlopen.patch&token=pXyznME9u36A4qVP3ikI_rQDHb4%3A1332318198755' -O hadoop-snappy.patch
+  #patch -p1 -i hadoop-snappy.patch
+  mvn package
   mkdir tar_extracted
   mv target/hadoop-snappy-0.0.1-SNAPSHOT.tar.gz tar_extracted
   cd tar_extracted
   tar xvzf hadoop-snappy-0.0.1-SNAPSHOT.tar.gz 
   sudo cp -R hadoop-snappy-0.0.1-SNAPSHOT/lib/* /opt/mapr/hadoop/hadoop-0.20.2/lib/
+  sudo cp /usr/local/lib/libsnappy.{la,a} /opt/mapr/hadoop/hadoop-0.20.2/lib/native/Linux-amd64-64/ 
 
+  #sudo cp -R hadoop-snappy-0.0.1-SNAPSHOT/lib/* /opt/mapr/lib/
+  #sudo rm -rf /opt/mapr/hadoop/hadoop-0.20.2/lib/native/Linux-i386-32/
+  #sudo rm /opt/mapr/hadoop/hadoop-0.20.2/lib/hadoop-snappy-0.0.1-SNAPSHOT.jar
 }
 
 function set_in_mapred_site {
  key=$1
  value=$2
- echo "Setting $key = $value in mapred-site.xml"
+ file=$3
+ echo "Setting $key = $value in $file"
  #cat $mapred_site_file | tr -d "\n" | sed "s/> *</></g" > $mapred_site_file
- tmp_mapred_site="$mapred_site_file.tmp"
- sudo ruby $HOME/set_in_mapred.rb $mapred_site_file $tmp_mapred_site $key $value
- sudo cp $tmp_mapred_site $mapred_site_file
+ tmp_file="$file.tmp"
+ sudo ruby $HOME/set_in_mapred.rb $file $tmp_file $key $value
+ sudo cp $tmp_file $file
  #sudo perl -p -i -e "s/<property><name>$key</name><\/property>/blublu/" /opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml.backup
  #sudo sed  -i "s/<property><name>$key<\/name><value>(.*)<\/value><\/property>//g" $mapred_site_file
  #sudo sed  -i "s/<\/configuration>//g" $mapred_site_file
@@ -42,28 +52,28 @@ function set_in_mapred_site {
 
 function config_hadoop {
  #sudo rm -rf /opt/mapr/hadoop/hadoop-0.20.2/lib/snappy #debug, remove
-
- mapred_site_file="/opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml"
- mapred_backup="${mapred_site_file}.backup"
- if [ ! -f "$mapred_backup" ]; then
-   sudo cp $mapred_site_file $mapred_backup
+ #mapred_site_file="/opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml"
+ file="/opt/mapr/hadoop/hadoop-0.20.2/conf/core-site.xml"
+ file_backup="${file}.backup"
+ if [ ! -f "$file_backup" ]; then
+   sudo cp $file $file_backup
  else 
-   sudo cp $mapred_backup $mapred_site_file
+   sudo cp $file_backup $file
  fi  
 #mapred_site_file="/opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml"
- set_in_mapred_site "mapred.output.compression.type" "BLOCK"
- set_in_mapred_site "mapred.map.output.compression.type" "BLOCK"
- set_in_mapred_site "mapred.submit.replication" "3"
- set_in_mapred_site "mapred.child.java.opts" "-Xmx1024m"
- set_in_mapred_site "mapreduce.job.counters.limit" "500"
- set_in_mapred_site "mapred.tasktracker.map.tasks.maximum" "2"
- set_in_mapred_site "mapred.tasktracker.reduce.tasks.maximum" "2"
- set_in_mapred_site "mapred.output.compress" "true" 
- set_in_mapred_site "mapred.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec"
- set_in_mapred_site "mapred.compress.map.output" "true"
- set_in_mapred_site "mapred.map.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec"
- set_in_mapred_site "mapred.compress.map.output" "true"
- set_in_mapred_site "io.compression.codecs" "org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.BZip2Codec,org.apache.hadoop.io.compress.SnappyCodec"
+ set_in_mapred_site "mapred.output.compression.type" "BLOCK" $file
+ set_in_mapred_site "mapred.map.output.compression.type" "BLOCK" $file
+ set_in_mapred_site "mapred.submit.replication" "3" $file
+ set_in_mapred_site "mapred.child.java.opts" "-Xmx1024m" $file
+ set_in_mapred_site "mapreduce.job.counters.limit" "500" $file
+ set_in_mapred_site "mapred.tasktracker.map.tasks.maximum" "2" $file
+ set_in_mapred_site "mapred.tasktracker.reduce.tasks.maximum" "2" $file
+ set_in_mapred_site "mapred.output.compress" "true"  $file
+ set_in_mapred_site "mapred.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec" $file
+ set_in_mapred_site "mapred.compress.map.output" "true" $file
+ set_in_mapred_site "mapred.map.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec" $file
+ set_in_mapred_site "mapred.compress.map.output" "true" $file
+ set_in_mapred_site "io.compression.codecs" "org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.BZip2Codec,org.apache.hadoop.io.compress.SnappyCodec" $file
 
 }
 
@@ -162,7 +172,7 @@ function services {
 
 
 if [ -z "$1" -o -z "$2" -o -z "$3" -o -z "$4" ]; then
-    echo "args: [user] [master_host] [master|slave] [install|stop|start|restart]"
+    echo "args: [user] [master_host] [master|slave] [install|config-hadoop|config-snappy|stop|start|restart]"
     exit 1
 fi
 
@@ -180,6 +190,8 @@ if [ $operation = "install" ]; then
   install_all $user $master_host $master_or_slave
 elif [ $operation = "config-hadoop" ]; then
   config_hadoop
+elif [ $operation = "config-snappy" ]; then
+  install_snappy
 elif [ $operation = "stop" -o $operation = "start" -o $operation = "stop" -o $operation = "restart" ]; then
   services $master_or_slave $operation
 else
