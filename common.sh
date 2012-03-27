@@ -30,7 +30,7 @@ function install_snappy {
   cd tar_extracted
   tar xvzf hadoop-snappy-0.0.1-SNAPSHOT.tar.gz 
   sudo cp -R hadoop-snappy-0.0.1-SNAPSHOT/lib/* /opt/mapr/hadoop/hadoop-0.20.2/lib/
-  sudo cp /usr/local/lib/libsnappy.{la,a} /opt/mapr/hadoop/hadoop-0.20.2/lib/native/Linux-amd64-64/ 
+  #sudo cp /usr/local/lib/libsnappy.{la,a} /opt/mapr/hadoop/hadoop-0.20.2/lib/native/Linux-amd64-64/ 
 
   #sudo cp -R hadoop-snappy-0.0.1-SNAPSHOT/lib/* /opt/mapr/lib/
   #sudo rm -rf /opt/mapr/hadoop/hadoop-0.20.2/lib/native/Linux-i386-32/
@@ -55,7 +55,7 @@ function set_in_mapred_site {
 function config_hadoop {
  #sudo rm -rf /opt/mapr/hadoop/hadoop-0.20.2/lib/snappy #debug, remove
  #mapred_site_file="/opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml"
- file="/opt/mapr/hadoop/hadoop-0.20.2/conf/core-site.xml"
+ file="/opt/mapr/hadoop/hadoop-0.20.2/conf/mapred-site.xml"
  file_backup="${file}.backup"
  if [ ! -f "$file_backup" ]; then
    sudo cp $file $file_backup
@@ -71,15 +71,23 @@ function config_hadoop {
  set_in_mapred_site "mapred.tasktracker.map.tasks.maximum" "2" $file
  set_in_mapred_site "mapred.tasktracker.reduce.tasks.maximum" "2" $file
  set_in_mapred_site "mapred.output.compress" "true"  $file
+ set_in_mapred_site "mapred.compress.output" "true"  $file
  set_in_mapred_site "mapred.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec" $file
+ set_in_mapred_site "mapred.reduce.tasks" "20" $file
  set_in_mapred_site "mapred.compress.map.output" "true" $file
  set_in_mapred_site "mapred.map.output.compression.codec" "org.apache.hadoop.io.compress.SnappyCodec" $file
- set_in_mapred_site "mapred.compress.map.output" "true" $file
  set_in_mapred_site "io.compression.codecs" "org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.BZip2Codec,org.apache.hadoop.io.compress.SnappyCodec" $file
 
 }
 
-
+function install_thrift {
+  cd
+  sudo apt-get -y --force-yes install libboost-dev libevent-dev libtool flex bison g++ automake pkg-config libboost-test-dev libmono-dev ruby1.8-dev libcommons-lang-java php5-dev
+  wget http://archive.apache.org/dist/thrift/0.6.1/thrift-0.6.1.tar.gz
+  tar xvzf thrift-0.6.1.tar.gz
+  cd thrift-0.6.1
+  ./configure && make && sudo make install
+}
 
 
 function master_install {
@@ -87,7 +95,7 @@ function master_install {
         master_host=$2
         
         sudo apt-get -y --force-yes -f install mapr-cldb mapr-jobtracker mapr-webserver mapr-zookeeper
-
+	#install_thrift
         install_snappy
 	sudo /etc/init.d/mapr-cldb stop
 	sudo /opt/mapr/server/configure.sh -C $master_host:7222 -Z $master_host:5181 -N MyCluster
@@ -131,7 +139,7 @@ function install_all {
 
    echo -e "blabla\nblabla" | sudo passwd $user
    sudo add-apt-repository ppa:sun-java-community-team/sun-java6
-   sudo sh -c 'echo "deb http://package.mapr.com/releases/v1.2.2/ubuntu/ mapr optional" >> /etc/apt/sources.list'
+   sudo sh -c 'echo "deb http://package.mapr.com/releases/v1.2.3/ubuntu/ mapr optional" >> /etc/apt/sources.list'
    sudo dpkg --configure -a
 
    sudo apt-get update
@@ -194,6 +202,8 @@ elif [ $operation = "config-hadoop" ]; then
   config_hadoop
 elif [ $operation = "config-snappy" ]; then
   install_snappy
+elif [ $operation = "config-thrift" ]; then
+  install_thrift
 elif [ $operation = "stop" -o $operation = "start" -o $operation = "stop" -o $operation = "restart" ]; then
   services $master_or_slave $operation
 else
